@@ -5,9 +5,7 @@ from contextlib import contextmanager
 from torch.utils.data import Dataset, IterableDataset
 
 
-def random_labelled_image(
-    shape: Tuple[int, ...], num_classes: int, low=0, high=255, dtype=torch.int,
-) -> Tuple[Tensor, int]:
+def random_labelled_image(shape: Tuple[int, ...], num_classes: int, low=0, high=255, dtype=torch.int) -> Tuple[Tensor, int]:
     """
     Generates a random image and a random class label for it.
     :param shape: The shape of the generated image e.g. (C, H, W).
@@ -20,7 +18,8 @@ def random_labelled_image(
     # TODO:
     #  Implement according to the docstring description.
     # ====== YOUR CODE: ======
-    
+    image = torch.randint(low=low,high=high,size=shape,dtype=dtype)
+    label = torch.randint(low=0,high=num_classes,size=(1,)).item()
     # ========================
     return image, label
 
@@ -36,18 +35,17 @@ def torch_temporary_seed(seed: int):
     #  Implement this context manager as described.
     #  See torch.random.get/set_rng_state(), torch.random.manual_seed().
     # ====== YOUR CODE: ======
-    
+    state = torch.random.get_rng_state()
     # ========================
     try:
         # ====== YOUR CODE: ======
-        
+        gen = torch.random.manual_seed(seed)
         # ========================
-        yield
+        yield gen
     finally:
         # ====== YOUR CODE: ======
-        
+        torch.random.set_rng_state(state)
         # ========================
-
 
 class RandomImageDataset(Dataset):
     """
@@ -82,15 +80,18 @@ class RandomImageDataset(Dataset):
         #  the random state outside this method.
         #  Raise a ValueError if the index is out of range.
         # ====== YOUR CODE: ======
-        
-        # ========================
-
+        if index >= self.num_samples:
+            raise ValueError("Index out of range")
+        with torch_temporary_seed(index):
+            x, y = random_labelled_image(self.image_dim, self.num_classes, low=0, high=256)
+        return x, y
+    
     def __len__(self):
         """
         :return: Number of samples in this dataset.
         """
         # ====== YOUR CODE: ======
-        
+        return self.num_samples
         # ========================
 
 
@@ -119,7 +120,9 @@ class ImageStreamDataset(IterableDataset):
         #  Yield tuples to produce an iterator over random images and labels.
         #  The iterator should produce an infinite stream of data.
         # ====== YOUR CODE: ======
-        
+        self.sample = random_labelled_image(self.image_dim, self.num_classes, low=0, high=256)
+        return iter(self.sample)
+
         # ========================
 
 
@@ -147,10 +150,12 @@ class SubsetDataset(Dataset):
         #  Return the item at index + offset from the source dataset.
         #  Raise an IndexError if index is out of bounds.
         # ====== YOUR CODE: ======
-        
+        if index >= self.subset_len:
+            raise IndexError("Index out of range")
+        return self.source_dataset.__getitem__(self.offset+index)
         # ========================
 
     def __len__(self):
         # ====== YOUR CODE: ======
-        
+        return self.subset_len
         # ========================
